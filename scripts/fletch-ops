@@ -1,0 +1,192 @@
+#!/usr/bin/env bash
+# Read-only operations report for the production box, written to be read by an
+# AI agent as much as a person: one screen per command, plain lines, no colour,
+# no prompts. Nothing here writes to the database, the filesystem or docker.
+#
+# Install: install -m 0755 scripts/fletch-ops /usr/local/bin/fletch-ops
+# Use:     fletch-ops summary | build <id-prefix> | errors [hours] | containers
+#          | deployer | site <slug> | tail [minutes] | stuck | registry
+set -uo pipefail
+
+ENV_FILE=/etc/fletch/fletch.env
+q() { sudo -u postgres psql -d fletch -At -F '  ' -c "$1" 2>&1; }
+
+env_get() { grep -E "^$1=" "$ENV_FILE" 2>/dev/null | cut -d= -f2- | tr -d '"'; }
+
+rpc() {
+  # $1 method, $2 params json
+  curl -s -m 10 -X POST "${RPC:-https://rpc.testnet.chain.robinhood.com}" -H 'content-type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"$1\",\"params\":$2}" | sed -n 's/.*"result":"\([^"]*\)".*/\1/p'
+}
+
+hex_to_eth() { node -e 'const w=BigInt(process.argv[1]);console.log((Number(w)/1e18).toFixed(6))' "$1" 2>/dev/null || echo "?"; }
+
+deployer_address() {
+  local key; key=$(env_get FORGE_DEPLOYER_KEY_46630)
+  [ -z "$key" ] && { echo ""; return; }
+  cd /opt/fletch/app && sudo -u fletch node -e '
+    const { privateKeyToAccount } = require("viem/accounts");
+    console.log(privateKeyToAccount(process.argv[1]).address);' "$key" 2>/dev/null
+}
+
+cmd_summary() {
+  echo "== fletch ops summary  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "services   $(systemctl is-active fletch fletch-watch fletch-registry nginx docker fletch-reap.timer fletch-registry-sync.timer fletch-backup.timer | paste -sd' ')"
+  echo "           (app watch registry-daemon nginx docker reap registry-sync backup)"
+  echo "restarts   fletch=$(systemctl show fletch -p NRestarts --value) since $(systemctl show fletch -p ActiveEnterTimestamp --value)"
+  echo "heartbeat  $(q "select name||' '||round(extract(epoch from now()-last_beat_at))||'s ago, head '||coalesce(head_block::text,'?') from daemon_heartbeats" | head -1)"
+  local head; head=$(rpc eth_blockNumber '[]' | node -e 'process.stdin.on("data",d=>console.log(parseInt(d.toString().trim(),16)))' 2>/dev/null)
+  echo "chain      testnet head ${head:-?}"
+  echo "builds 24h $(q "select coalesce(string_agg(status||'='||n, ', '),'none') from (select status, count(*) n from builds where created_at > now()-interval '24 hours' group by 1) s")"
+  echo "stuck      $(q "select count(*) from builds where status in ('queued','building') and coalesce(started_at, created_at) < now()-interval '60 minutes'") builds past the 60-minute deadline"
+  echo "running    $(q "select count(*) from builds where status in ('queued','building')") builds in flight, $(docker ps --filter name=fletch- -q | wc -l | tr -d ' ') fletch containers up"
+  echo "contracts  $(q "select count(*)||' deployed, '||count(*) filter (where verified)||' verified, '||count(*) filter (where created_at > now()-interval '24 hours')||' in 24h' from contracts")"
+  echo "hosted     $(q "select count(*) from projects where preview_url is not null") projects with a live address"
+  echo "watch      $(q "select count(*)||' watchers, '||count(*) filter (where status='degraded')||' degraded; deliveries 24h: '||(select coalesce(string_agg(status||'='||n, ', '),'none') from (select status, count(*) n from watcher_deliveries where created_at > now()-interval '24 hours' group by 1) d) from watchers")"
+  echo "webhooks   $(q "select count(*)||' endpoints, '||count(*) filter (where enabled)||' enabled, '||count(*) filter (where last_error is not null)||' with a last error ('||count(*) filter (where last_error_at > now()-interval '24 hours')||' in 24h); watchers delivering to one '||(select count(*) from watchers where delivery='webhook') from webhook_endpoints")"
+  local addr; addr=$(deployer_address)
+  if [ -n "$addr" ]; then
+    local bal; bal=$(rpc eth_getBalance "[\"$addr\",\"latest\"]")
+    echo "deployer   $addr  $(hex_to_eth "${bal:-0x0}") ETH"
+  else
+    echo "deployer   NOT CONFIGURED"
+  fi
+  echo "disk       $(df -h / | awk 'NR==2{print $3" used of "$2" ("$5")"}')  workspaces $(du -sh /var/lib/fletch/workspaces 2>/dev/null | cut -f1)  sites $(du -sh /var/lib/fletch/sites 2>/dev/null | cut -f1)"
+  echo "env        $(for k in MOONSHOT_API_KEY FORGE_DEPLOYER_KEY_46630 TELEGRAM_BOT_TOKEN FLETCH_TREASURY_ADDRESS NEXT_PUBLIC_REOWN_PROJECT_ID RPC_URL_4663; do printf "%s=%s " "$k" "$([ -n "$(env_get $k)" ] && echo set || echo EMPTY)"; done)"
+  echo
+  echo "== errors, last 24h (scope · event = count)"
+  journalctl -u fletch -u fletch-watch -u fletch-registry --since "24 hours ago" --no-pager -o cat 2>/dev/null \
+    | grep -E '"event":"[a-z-]*(fail|error|crash|fatal|cancel|refus|throttl|missing|reorg)[a-z-]*"' \
+    | sed -E 's/.*"scope":"([a-z-]+)".*"event":"([a-z-]+)".*/\1 · \2/' | sort | uniq -c | sort -rn | head -12
+  echo
+  echo "== last 5 builds"
+  q "select left(id,8)||'  '||status||'  '||to_char(created_at,'MM-DD HH24:MI')||'  '||coalesce(left(error,70),'') from builds order by created_at desc limit 5"
+}
+
+cmd_build() {
+  local prefix="${1:-}"; [ -z "$prefix" ] && { echo "usage: fletch-ops build <id-prefix>"; return 64; }
+  echo "== build $prefix"
+  q "select 'id '||id||E'\nstatus '||status||E'\nuser '||user_id||E'\nproject '||coalesce(project_id,'-')||E'\nmodel '||coalesce(model,'-')||E'\ntokens '||coalesce(tokens_in::text,'0')||' in / '||coalesce(tokens_out::text,'0')||' out, \$'||coalesce(cost_usd::text,'0')||E'\ncreated '||created_at||E'\nstarted '||coalesce(started_at::text,'-')||E'\nfinished '||coalesce(finished_at::text,'-')||E'\nerror '||coalesce(error,'-')||E'\nprompt '||left(prompt,200) from builds where id like '$prefix%' limit 1"
+  echo
+  echo "== events"
+  q "select lpad(seq::text,3,' ')||'  '||rpad(level,11,' ')||'  '||left(regexp_replace(chunk::jsonb->>'text', E'\n', ' ', 'g'),150) from build_logs where build_id like '$prefix%' order by seq"
+  echo
+  echo "== contract rows"
+  q "select chain_id||'  '||address||'  verified='||verified||'  abi='||(abi is not null)||'  tx='||coalesce(tx_hash,'-')||'  '||coalesce(verify_error,'') from contracts where build_id like '$prefix%'"
+  echo
+  echo "== journald lines mentioning this build"
+  journalctl -u fletch --since "7 days ago" --no-pager -o cat 2>/dev/null | grep -F "$prefix" | tail -20 | cut -c1-300
+}
+
+cmd_errors() {
+  local hours="${1:-6}"
+  echo "== error-class events, last ${hours}h, newest last (cut to 300 chars)"
+  journalctl -u fletch -u fletch-watch --since "${hours} hours ago" --no-pager -o cat 2>/dev/null \
+    | grep -E '"event":"[a-z-]*(fail|error|crash|fatal|cancel|refus|throttl|missing)[a-z-]*"|"level":"error"' \
+    | tail -40 | cut -c1-300
+}
+
+cmd_containers() {
+  echo "== fletch containers (name  status  created)"
+  docker ps -a --filter name=fletch- --format '{{.Names}}  {{.Status}}  {{.CreatedAt}}' | head -20
+  echo "any container older than 20 minutes while no build is in flight is an orphan"
+  echo "images: $(docker images fletch-agent --format '{{.Tag}}={{.Size}}' | paste -sd' ')"
+}
+
+cmd_deployer() {
+  local addr; addr=$(deployer_address)
+  [ -z "$addr" ] && { echo "deployer NOT CONFIGURED (FORGE_DEPLOYER_KEY_46630 empty)"; return; }
+  local bal gp; bal=$(rpc eth_getBalance "[\"$addr\",\"latest\"]"); gp=$(rpc eth_gasPrice '[]')
+  node -e '
+    const [addr, bal, gp] = process.argv.slice(1);
+    const wei = BigInt(bal || "0x0"), price = BigInt(gp || "0x0");
+    const perDeploy = price * 1500000n;
+    console.log("address   ", addr);
+    console.log("balance   ", (Number(wei)/1e18).toFixed(6), "ETH");
+    console.log("gas price ", (Number(price)/1e9).toFixed(3), "gwei");
+    console.log("per deploy", (Number(perDeploy)/1e18).toFixed(6), "ETH at 1.5M gas");
+    console.log("deploys left ~", perDeploy > 0n ? (wei / perDeploy).toString() : "?");
+    console.log("minimum to attempt: 0.002 ETH (lib/build/deploy.ts MIN_BALANCE_WEI)");
+    console.log("faucet: https://faucet.testnet.chain.robinhood.com  (0.01 ETH per day, browser only)");
+  ' "$addr" "$bal" "$gp"
+  echo
+  echo "== last 5 deploy events"
+  journalctl -u fletch --since "7 days ago" --no-pager -o cat 2>/dev/null | grep '"scope":"deploy"' | tail -5 | cut -c1-240
+}
+
+cmd_site() {
+  local slug="${1:-}"; [ -z "$slug" ] && { echo "usage: fletch-ops site <slug>"; return 64; }
+  local dir="/var/lib/fletch/sites/$slug"
+  echo "== site $slug"
+  echo "current    $(readlink "$dir/current" 2>/dev/null || echo '(none)')"
+  echo "releases   $(ls -1 "$dir" 2>/dev/null | grep -v '^current' | wc -l | tr -d ' ')"
+  echo "cert       $([ -f "/etc/letsencrypt/live/$slug.apps.example.com/fullchain.pem" ] && echo present || echo MISSING)  nginx copy $([ -f "/etc/nginx/apps-certs/$slug.apps.example.com/fullchain.pem" ] && echo present || echo MISSING)"
+  echo "https      $(curl -s -o /dev/null -w '%{http_code} in %{time_total}s' -m 10 "https://$slug.apps.example.com/")"
+  echo "db         $(q "select coalesce(preview_url,'(no preview_url)') from projects where slug='$slug'")"
+}
+
+cmd_tail() {
+  local minutes="${1:-15}"
+  echo "== app + daemon events, last ${minutes} min"
+  journalctl -u fletch -u fletch-watch --since "${minutes} minutes ago" --no-pager -o cat 2>/dev/null | grep '"scope"' | tail -60 | cut -c1-260
+}
+
+cmd_registry() {
+  echo "== registry authority  $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "daemon     $(systemctl is-active fletch-registry 2>/dev/null)  heartbeat $(q "select coalesce(round(extract(epoch from now()-last_beat_at))::text||'s ago','never') from daemon_heartbeats where name='registry-daemon'")"
+  echo "== freshness verdict (the same reading /registry/status publishes)"
+  q "select 'daemon '||coalesce(round(extract(epoch from now()-last_beat_at))::text||'s ago','never')||' · jobs failing now: '||coalesce((select string_agg(job,', ') from (select distinct on (job) job, ok from sync_runs order by job, started_at desc) r where ok is false),'none') from daemon_heartbeats where name='registry-daemon'"
+  echo "== last run per job (job  ok  rows  age  error)"
+  q "select distinct on (job) rpad(job,18,' ')||'  '||coalesce(ok::text,'running')||'  '||coalesce(rows::text,'-')||'  '||round(extract(epoch from now()-started_at))||'s  '||coalesce(left(error,80),'') from sync_runs order by job, started_at desc"
+  echo "== checkpoints (name  block  age)"
+  q "select rpad(name,24,' ')||'  '||block_number||'  '||round(extract(epoch from now()-updated_at))||'s' from sync_checkpoints where name not like '%-asset:%' order by name"
+  q "select 'coverage markers: supply '||count(*) filter (where name like 'supply-asset:%')||' · ledger '||count(*) filter (where name like 'transfer-ledger-asset:%') from sync_checkpoints"
+  echo "== state coverage"
+  q "select 'assets with state '||count(*)||' · multiplier read '||count(*) filter (where ui_multiplier is not null)||' · canonical '||count(*) filter (where canonical)||' · paused '||count(*) filter (where token_paused)||' · feeds '||count(*) filter (where feed_price is not null)||' (stale '||count(*) filter (where feed_stale)||') · quotes '||count(*) filter (where api_bid is not null)||' · quote errors '||count(*) filter (where api_error is not null)||' · bridged '||(select count(*) from registry_assets where asset_type='bridged' and status='active')||' · oldest state '||coalesce(round(extract(epoch from now()-min(state_checked_at)))::text,'?')||'s' from registry_asset_state"
+  echo "== control plane"
+  q "select 'implementation '||coalesce(implementation,'?')||' · paused '||coalesce(paused::text,'?')||' · blocked '||coalesce(blocked_count::text,'?')||' · last event block '||coalesce(last_event_block::text,'?')||' · checked '||round(extract(epoch from now()-checked_at))||'s ago' from registry_control_state"
+  echo "== authority events, last 24 h (kind  count) · unmatched"
+  q "select rpad(kind,22,' ')||'  '||count(*) from authority_events where observed_at > now() - interval '24 hours' group by kind order by count(*) desc limit 12"
+  q "select 'unmatched '||count(*) filter (where matched_at is null)||' · total '||count(*)||' · latest '||coalesce(round(extract(epoch from now()-max(observed_at)))::text||'s ago','never') from authority_events"
+  echo "== second source and lookalikes"
+  q "select 'supply vs blockscout: agree '||count(*) filter (where supply_agreement in ('agree','close'))||' · differ '||count(*) filter (where supply_agreement='differ')||' · unknown '||count(*) filter (where supply_agreement='unknown' or supply_agreement is null)||' · checked '||coalesce(round(extract(epoch from now()-max(blockscout_checked_at)))::text||'s ago','never') from registry_asset_state"
+  q "select 'lookalikes '||count(*)||' · exact name '||count(*) filter (where exact_name)||' · issuer-deployed unlisted '||count(*) filter (where kind='unlisted_stock')||' · tickers '||count(distinct matches_symbol) from lookalike_tokens"
+  q "select 'feed rounds '||count(*)||' across '||count(distinct feed_address)||' feeds · newest '||coalesce(round(extract(epoch from now()-max(updated_at)))::text||'s ago','never') from feed_rounds"
+  q "select 'holder ledger: balances '||(select count(*) from holder_balances)||' · days '||(select count(*) from asset_activity_daily)||' · concentration rows '||(select count(*) from asset_concentration)||' · ledger block '||coalesce((select block_number::text from sync_checkpoints where name='transfer-ledger:4663'),'none')||' · behind head by '||coalesce(((select head_block from chain_health order by checked_at desc limit 1)-(select block_number from sync_checkpoints where name='transfer-ledger:4663'))::text,'?')"
+  q "select 'holder labels: named '||count(*) filter (where kind <> 'eoa')||' · contracts '||count(*) filter (where kind='contract')||' · pools '||count(*) filter (where kind in ('pool_manager','dex_pool'))||' · issuer wallets '||count(*) filter (where kind='issuer')||' · gateways '||count(*) filter (where kind='bridge_gateway')||' · probed '||count(*)||' · newest '||coalesce(round(extract(epoch from now()-max(checked_at)))::text||'s ago','never') from holder_labels"
+  q "select 'float, latest day: assets '||count(*)||' · float written '||count(*) filter (where float_pct is not null)||' · median float '||coalesce(round(percentile_cont(0.5) within group (order by float_pct)::numeric,1)::text||'%','?')||' · in pools '||coalesce(round(percentile_cont(0.5) within group (order by pools_pct)::numeric,1)::text||'%','?')||' · unchecked over 1% '||count(*) filter (where unknown_pct > 1) from asset_concentration where day=(select max(day) from asset_concentration)"
+  q "select 'dex: pools '||count(*)||' · with state '||count(*) filter (where state_checked_at is not null)||' · dollar-priced '||count(*) filter (where price_usd is not null)||' · depth $'||coalesce(round(sum(depth_usd))::text,'?')||' · swaps counted on '||count(*) filter (where swaps_24h is not null)||' pools, '||coalesce(sum(swaps_24h),0)||' swaps · assets with a premium '||(select count(*) from registry_asset_state where dex_premium_pct is not null)||' · outside 2% '||(select count(*) from registry_asset_state where abs(dex_premium_pct) > 2) from dex_pools"
+  q "select 'dex venues: '||string_agg(venue||' pools '||pools||' priced '||priced||' depth $'||coalesce(round(depth)::text,'?')||' assets '||assets||' scanned to '||coalesce(block::text,'never'), ' · ' order by pools desc) from (select p.venue, count(*) pools, count(p.price_usd) priced, sum(p.depth_usd) depth, (select count(*) from registry_asset_state s join dex_pools b on b.id=s.dex_pool_id where b.venue=p.venue) assets, (select block_number from sync_checkpoints where name=(case p.venue when 'uniswap_v3' then 'dex-pools-v3:4663' else 'dex-pools:4663' end)) block from dex_pools p group by p.venue) v"
+  q "select 'bridge: flows '||(select count(*) from bridge_flows)||' · deposits 24h '||(select count(*) from bridge_flows where direction='deposit' and occurred_at > now()-interval '24 hours')||' · withdrawals 24h '||(select count(*) from bridge_flows where direction='withdrawal' and occurred_at > now()-interval '24 hours')||' · escrow rows '||(select count(*) from bridge_escrow)||' · in flight nonzero '||(select count(*) from bridge_escrow where in_flight_raw <> 0)||' · checked '||coalesce((select round(extract(epoch from now()-max(checked_at)))::text||'s ago' from bridge_escrow),'never')"
+  q "select 'issuer: documents '||(select count(*) from issuer_documents where gone_at is null)||' · final terms '||(select count(*) from issuer_documents where kind='final_terms' and gone_at is null)||' · mapped '||(select count(*) from issuer_documents where asset_id is not null)||' · revised 7d '||(select count(*) from issuer_documents where changed_at > now()-interval '7 days')||' · pages '||(select count(*) from issuer_pages)||' · page changes 7d '||(select count(*) from issuer_pages where changed_at > now()-interval '7 days')"
+  q "select 'finality: confirmed assertion '||coalesce(left(latest_confirmed_assertion,12),'?')||' · age '||coalesce(round(confirmed_age_seconds/3600.0,1)::text||' h','?')||' · ArbOS '||coalesce(arbos_version::text,'?')||' · owners '||coalesce(jsonb_array_length(chain_owners)::text,'?') from chain_health order by checked_at desc limit 1"
+  echo "== events on record"
+  q "select 'control '||(select count(*) from registry_control_events)||' · multiplier '||(select count(*) from registry_multiplier_events)||' · mint/burn '||(select count(*) from registry_supply_events)||' · corporate actions '||(select count(*) from registry_corporate_actions)||' · health rows '||(select count(*) from chain_health)"
+  echo "== supply reconciliation, latest day"
+  q "select day||': '||count(*)||' assets, '||count(*) filter (where residual_raw <> 0)||' with a non-zero residual' from registry_supply_snapshots where day=(select max(day) from registry_supply_snapshots) group by day"
+  echo "== daily state history (one row per asset per UTC day)"
+  q "select 'rows '||count(*)||' · days on record '||count(distinct day)||' · first '||coalesce(min(day),'none')||' · latest '||coalesce(max(day),'none')||' · assets on latest day '||count(*) filter (where day=(select max(day) from asset_state_daily))||' · premium written '||count(*) filter (where day=(select max(day) from asset_state_daily) and dex_premium_pct is not null)||' · ledger holders written '||count(*) filter (where day=(select max(day) from asset_state_daily) and ledger_holders is not null) from asset_state_daily"
+  echo "== divergence outliers (feed vs quote × multiplier, > 2%)"
+  q "select a.symbol||'  '||s.price_divergence_pct||'%  feed '||coalesce(s.feed_price::text,'-')||' quote '||coalesce(s.api_bid::text,'-')||'/'||coalesce(s.api_ask::text,'-')||' ×'||coalesce(s.ui_multiplier::text,'-') from registry_asset_state s join registry_assets a on a.id=s.asset_id where abs(s.price_divergence_pct) > 2 order by abs(s.price_divergence_pct) desc limit 8"
+  echo "== chain health, latest"
+  q "select 'head '||head_block||' · block '||coalesce(block_time_ms::text,'?')||' ms · base fee '||coalesce(round(base_fee_wei/1e9,3)::text,'?')||' gwei · L1 block '||coalesce(l1_block::text,'?')||' · batches '||coalesce(batch_count::text,'?')||' · delayed '||coalesce(delayed_messages::text,'?')||' · poster '||coalesce(round(batch_poster_balance_wei/1e18,3)::text,'?')||' ETH · status '||coalesce(status_page,'?')||' · '||round(extract(epoch from now()-checked_at))||'s ago' from chain_health order by checked_at desc limit 1"
+}
+
+cmd_stuck() {
+  echo "== builds in flight (queued/building), oldest first"
+  q "select left(id,8)||'  '||status||'  started '||coalesce(started_at::text,'-')||'  age '||round(extract(epoch from now()-coalesce(started_at,created_at))/60)||' min  '||left(prompt,60) from builds where status in ('queued','building') order by coalesce(started_at,created_at)"
+  echo "(the reaper fails and refunds anything past 60 minutes)"
+}
+
+case "${1:-summary}" in
+  summary) cmd_summary ;;
+  build) cmd_build "${2:-}" ;;
+  errors) cmd_errors "${2:-6}" ;;
+  containers) cmd_containers ;;
+  deployer) cmd_deployer ;;
+  site) cmd_site "${2:-}" ;;
+  tail) cmd_tail "${2:-15}" ;;
+  stuck) cmd_stuck ;;
+  registry) cmd_registry ;;
+  *) echo "usage: fletch-ops summary | build <id-prefix> | errors [hours] | containers | deployer | site <slug> | tail [minutes] | stuck | registry"; exit 64 ;;
+esac

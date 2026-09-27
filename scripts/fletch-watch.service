@@ -1,0 +1,34 @@
+# Fletch Watch daemon — a second, long-lived process independent of the web
+# service (fletch.service). A web deploy restarts fletch, never this unit, unless
+# deploy.sh's watch-restart step runs because this file is installed.
+#
+# Install:
+#   cp scripts/fletch-watch.service /etc/systemd/system/fletch-watch.service
+#   systemctl daemon-reload
+#   systemctl enable --now fletch-watch
+#
+# Mirrors fletch.service's shape (User, EnvironmentFile, WorkingDirectory,
+# hardening) so the two units are operated the same way; see docs/operations/servers.md.
+
+[Unit]
+Description=Fletch Watch daemon (poll + deliver)
+After=postgresql.service network-online.target
+Wants=network-online.target
+
+[Service]
+User=fletch
+EnvironmentFile=/etc/fletch/fletch.env
+WorkingDirectory=/opt/fletch/app
+ExecStart=/opt/fletch/app/node_modules/.bin/tsx workers/watch.ts
+Restart=always
+RestartSec=5
+
+# Same lockdown as fletch.service. This process only talks to Postgres, RPC
+# endpoints and the Telegram API — nothing it does needs elevated privileges.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

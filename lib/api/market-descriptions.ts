@@ -1,0 +1,1 @@
+export const POOL_DEPTH_DESCRIPTION = "Depth in USD uses observed quote-side holdings for v3. For v4 it uses a bounded quote estimate for a 1% price move; per-pool token reserves are unavailable. Check the pool's observation time and stateCurrent flag.";

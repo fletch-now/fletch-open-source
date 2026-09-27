@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+case "${SSH_ORIGINAL_COMMAND:-}" in
+  'docker system dial-stdio') exec /usr/bin/docker system dial-stdio ;;
+  'fletch-executor-inspect') exec /usr/bin/python3 -I /usr/local/lib/fletch/executor-inspect.py ;;
+  *) echo 'Command refused by Fletch executor policy.' >&2; exit 126 ;;
+esac

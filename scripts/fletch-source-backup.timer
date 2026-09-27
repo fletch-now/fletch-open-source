@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up Fletch project source daily
+
+[Timer]
+OnCalendar=*-*-* 04:15:00 UTC
+Persistent=true
+Unit=fletch-source-backup.service
+
+[Install]
+WantedBy=timers.target

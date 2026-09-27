@@ -1,0 +1,22 @@
+.card { position: fixed; z-index: 45; top: 112px; right: 16px; width: min(312px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; border: 1px solid var(--color-line); border-radius: 16px; background: var(--color-raised); color: var(--color-ink); box-shadow: 0 8px 32px #0002, 0 1px 4px #0001; animation: arrive .2s ease-out; }
+.header { display: flex; align-items: center; border-bottom: 1px solid var(--color-line); }
+.handle { display: flex; flex: 1; align-items: center; gap: 8px; min-width: 0; min-height: 44px; padding: 8px 12px; cursor: grab; touch-action: none; user-select: none; font-size: 12px; font-weight: 600; }
+.handle:active { cursor: grabbing; }
+.move { margin-left: auto; font-size: 10px; font-weight: 400; color: var(--color-ink-faint); }
+.reset { width: 40px; min-height: 44px; font-size: 20px; color: var(--color-ink-soft); }
+.reset:hover, .build:hover { background: var(--color-panel); }
+.builds { max-height: min(320px, 45dvh); overflow-y: auto; overscroll-behavior: contain; }
+.build { display: block; padding: 12px 14px; text-decoration: none; }
+.build + .build { border-top: 1px solid var(--color-line); }
+.title { display: flex; align-items: center; gap: 8px; }
+.name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+.elapsed { font-family: var(--font-jetbrains-mono), monospace; font-size: 10px; font-variant-numeric: tabular-nums; color: var(--color-ink-faint); }
+.status { margin: 5px 0 8px 15px; font-size: 12px; line-height: 1.5; color: var(--color-ink-soft); }
+.open { display: flex; justify-content: space-between; margin-left: 15px; font-size: 12px; font-weight: 600; color: var(--color-hood-deep); }
+.dot { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; background: var(--color-hood); animation: pulse 1.8s ease-in-out infinite; }
+.still { animation: none; background: var(--color-ink-faint); }
+.connection { border-top: 1px solid var(--color-line); margin: 0; padding: 8px 14px; font-size: 11px; color: var(--color-ink-soft); }
+.card :focus-visible { outline: 2px solid var(--color-hood-deep); outline-offset: -3px; border-radius: 6px; }
+@keyframes arrive { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .card, .dot { animation: none; } }

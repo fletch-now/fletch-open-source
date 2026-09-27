@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# Copies one app host's certificate from certbot's root-only tree into
+# /etc/nginx/apps-certs/<host>/, readable by the nginx workers, which load a
+# per-host certificate at handshake time. Called by fletch-publish-site after
+# issuance and by certbot on renewal (installed under renewal-hooks/deploy, where
+# certbot passes the lineage in RENEWED_LINEAGE).
+#
+# Install: install -m 0755 scripts/fletch-apps-cert-hook /usr/local/bin/
+#          ln -sf /usr/local/bin/fletch-apps-cert-hook /etc/letsencrypt/renewal-hooks/deploy/fletch-apps-cert-hook
+set -euo pipefail
+
+if [ -n "${RENEWED_LINEAGE:-}" ]; then
+  HOST="$(basename "${RENEWED_LINEAGE}")"
+else
+  HOST="${1:-}"
+fi
+case "${HOST}" in
+  *.apps.example.com|apps.example.com) ;;
+  *) exit 0 ;;
+esac
+
+SRC="/etc/letsencrypt/live/${HOST}"
+DEST="/etc/nginx/apps-certs/${HOST}"
+[ -f "${SRC}/fullchain.pem" ] || { echo "no certificate for ${HOST}" >&2; exit 66; }
+
+install -d -m 0750 -o root -g www-data /etc/nginx/apps-certs
+install -d -m 0750 -o root -g www-data "${DEST}"
+install -m 0640 -o root -g www-data "${SRC}/fullchain.pem" "${DEST}/fullchain.pem"
+install -m 0640 -o root -g www-data "${SRC}/privkey.pem" "${DEST}/privkey.pem"
+
+if [ -n "${RENEWED_LINEAGE:-}" ]; then
+  systemctl reload nginx
+fi

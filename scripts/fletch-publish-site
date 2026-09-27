@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# The one privileged step of publishing a hosted app: make sure the host has a
+# certificate, then reload nginx. Invoked by the app server as
+#   sudo -n /usr/local/bin/fletch-publish-site <slug>
+# through the entry in scripts/fletch-publish.sudoers. It takes one argument,
+# validates it against the same pattern nginx-apps.conf matches, and touches
+# nothing else on the machine.
+#
+# Install: install -m 0755 scripts/fletch-publish-site /usr/local/bin/
+#          install -m 0440 scripts/fletch-publish.sudoers /etc/sudoers.d/fletch-publish
+set -euo pipefail
+
+# A background process group lets TERM interrupt wait immediately and reach the
+# certificate helper's descendants before sudo reports that publication stopped.
+set -m
+ACTIVE_PID=""
+function stop_publish() {
+  trap '' TERM INT HUP
+  if [ -n "${ACTIVE_PID}" ]; then
+    kill -TERM -- "-${ACTIVE_PID}" 2>/dev/null || true
+    sleep 1
+    kill -KILL -- "-${ACTIVE_PID}" 2>/dev/null || true
+    wait "${ACTIVE_PID}" 2>/dev/null || true
+  fi
+  exit 143
+}
+trap stop_publish TERM INT HUP
+
+function run_step() {
+  "$@" &
+  ACTIVE_PID=$!
+  local status=0
+  wait "${ACTIVE_PID}" || status=$?
+  ACTIVE_PID=""
+  return "${status}"
+}
+
+SLUG="${1:-}"
+if ! [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]{1,60}$ ]]; then
+  echo "refused: slug must match ^[a-z0-9][a-z0-9-]{1,60}$" >&2
+  exit 64
+fi
+HOST="${SLUG}.apps.example.com"
+SITE_DIR="/var/lib/fletch/sites/${SLUG}"
+
+if [ ! -e "${SITE_DIR}/current" ]; then
+  echo "refused: ${SITE_DIR}/current does not exist" >&2
+  exit 65
+fi
+
+# nginx runs as www-data; the app server writes as fletch. Directories 755 and
+# files 644 is all the sharing needed, and it is set here so a stricter umask in
+# the app process cannot produce a site nginx refuses to read.
+run_step chmod 755 "/var/lib/fletch/sites" "${SITE_DIR}"
+run_step find "${SITE_DIR}/$(readlink "${SITE_DIR}/current")" -type d -exec chmod 755 {} + -o -type f -exec chmod 644 {} +
+
+# Activated only after the wildcard configuration passes nginx -t and reload.
+# Reuse it without ACME calls or a reload for each app. A stale wildcard fails
+# visibly instead of unexpectedly spending the per-domain issuance allowance.
+WILDCARD="/etc/nginx/apps-certs/wildcard-active.pem"
+if [ -e "${WILDCARD}" ]; then
+  run_step openssl x509 -in "${WILDCARD}" -noout -checkend 86400 >/dev/null
+  MATCH="$(openssl x509 -in "${WILDCARD}" -noout -checkhost "${HOST}")"
+  [[ "${MATCH}" = *"does match certificate"* ]] || { echo "wildcard certificate does not cover app host" >&2; exit 69; }
+  echo "ok ${HOST}"
+  exit 0
+fi
+
+# Static releases use the existing hostname regex and certificate paths. No
+# per-app Nginx configuration changes when an already certified app is updated.
+if [ -s "/etc/nginx/apps-certs/${HOST}/fullchain.pem" ] && [ -s "/etc/nginx/apps-certs/${HOST}/privkey.pem" ] \
+  && run_step runuser -u www-data -- test -r "/etc/nginx/apps-certs/${HOST}/fullchain.pem" \
+  && run_step runuser -u www-data -- test -r "/etc/nginx/apps-certs/${HOST}/privkey.pem"; then
+  echo "ok ${HOST}"
+  exit 0
+fi
+
+if [ ! -f "/etc/letsencrypt/live/${HOST}/fullchain.pem" ]; then
+  # Share Certbot's directories rather than creating competing ACME accounts.
+  # Waiting children remain in the cancellable group managed by run_step.
+  exec 9>/run/lock/fletch-certbot.lock
+  run_step flock --wait 90 9
+  CERTBOT_LOG="$(mktemp /run/lock/fletch-certbot-output.XXXXXX)"
+  trap 'rm -f "${CERTBOT_LOG}"' EXIT
+  CERTBOT_DEADLINE=$((SECONDS + 110))
+  while [ ! -f "/etc/letsencrypt/live/${HOST}/fullchain.pem" ]; do
+    if run_step certbot certonly --webroot -w /var/www/certbot -d "${HOST}" \
+      --non-interactive --agree-tos --keep-until-expiring --no-eff-email >"${CERTBOT_LOG}" 2>&1; then
+      cat "${CERTBOT_LOG}"
+      break
+    else
+      CERTBOT_STATUS=$?
+      cat "${CERTBOT_LOG}"
+      # The system renewal timer does not take our host lock. Retry only its
+      # explicit directory-lock conflict; ACME failures never replay here.
+      if ! grep -Fq "Another instance of Certbot is already running" "${CERTBOT_LOG}" || [ "${SECONDS}" -ge "${CERTBOT_DEADLINE}" ]; then
+        exit "${CERTBOT_STATUS}"
+      fi
+      run_step sleep 2
+    fi
+  done
+  rm -f "${CERTBOT_LOG}"
+  trap - EXIT
+  flock --unlock 9
+  exec 9>&-
+fi
+
+# nginx reads a per-host certificate at handshake time, as www-data, and
+# /etc/letsencrypt is root-only. Each app certificate is copied to a directory
+# the workers can read; scripts/fletch-apps-cert-hook does the same on renewal.
+run_step /usr/local/bin/fletch-apps-cert-hook "${HOST}"
+
+run_step nginx -t >/dev/null 2>&1
+run_step systemctl reload nginx
+echo "ok ${HOST}"

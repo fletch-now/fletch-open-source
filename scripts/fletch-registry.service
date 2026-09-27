@@ -1,0 +1,42 @@
+# Fletch Registry daemon — the authority pipelines in lib/registry/authority,
+# as a long-lived process beside the watch daemon (fletch-watch.service).
+# Registry updates are independent; switching the web release preserves this worker.
+#
+# Install:
+#   cp scripts/fletch-registry.service /etc/systemd/system/fletch-registry.service
+#   systemctl daemon-reload
+#   systemctl enable --now fletch-registry
+#
+# Same shape and lockdown as fletch-watch.service; see docs/operations/servers.md.
+
+[Unit]
+Description=Fletch Registry daemon (authority pipelines)
+After=postgresql.service network-online.target
+Wants=network-online.target
+
+[Service]
+User=fletch
+EnvironmentFile=/etc/fletch/fletch.env
+Environment=PGPOOL_MAX=6
+Environment=PGAPPNAME=fletch-registry
+WorkingDirectory=/opt/fletch/app
+ExecStart=/opt/fletch/app/node_modules/.bin/tsx workers/registry.ts
+Restart=always
+RestartSec=5
+TimeoutStopSec=15
+KillMode=mixed
+FinalKillSignal=SIGKILL
+MemoryHigh=1536M
+MemoryMax=2G
+CPUQuota=300%
+TasksMax=512
+
+# This process talks to Postgres, RPC endpoints, Chainlink's directory,
+# Robinhood's API and the status page — nothing it does needs privileges.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

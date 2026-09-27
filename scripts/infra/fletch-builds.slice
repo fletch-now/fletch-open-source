@@ -1,0 +1,13 @@
+[Unit]
+Description=Aggregate build sandboxes on the eight-vCPU offload host
+
+[Slice]
+CPUAccounting=true
+MemoryAccounting=true
+CPUQuota=600%
+MemoryHigh=22G
+MemoryMax=24G
+TasksMax=8192
+
+[Install]
+WantedBy=multi-user.target

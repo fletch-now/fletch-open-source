@@ -1,0 +1,13 @@
+[Unit]
+Description=Aggregate Fletch build sandbox resources
+
+[Slice]
+# Reviewed starting budget for the current four-CPU, 16-GiB shared host.
+# Individual agent and tool containers retain their own tighter limits.
+MemoryAccounting=true
+CPUQuota=300%
+MemoryMax=10G
+TasksMax=4096
+
+[Install]
+WantedBy=multi-user.target

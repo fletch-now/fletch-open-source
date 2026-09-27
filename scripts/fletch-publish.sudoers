@@ -1,0 +1,4 @@
+# The app server (user fletch) may run exactly one privileged command: the site
+# publish step, which issues a certificate and reloads nginx. No other sudo.
+# Install: install -m 0440 scripts/fletch-publish.sudoers /etc/sudoers.d/fletch-publish
+fletch ALL=(root) NOPASSWD: /usr/local/bin/fletch-publish-site

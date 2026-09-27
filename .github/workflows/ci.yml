@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: forge
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge
+      BETTER_AUTH_SECRET: ci-only-secret-ci-only-secret-000000
+      NEXT_TELEMETRY_DISABLED: "1"
+      TZ: UTC
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - run: npx next typegen
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Bootstrap disposable database, including SQL-only publication tables
+        run: npm run db:bootstrap
+      - name: Unit and credit integration tests
+        run: npm test -- --test-concurrency=1
+        env:
+          FLETCH_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge
+      - run: npm ci --prefix packages/fletch-mcp
+      - name: MCP tests
+        run: npm test --prefix packages/fletch-mcp
+      - name: Build
+        run: npm run build

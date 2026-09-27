@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the Fletch database backup nightly at 03:30 UTC
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 UTC
+Persistent=true
+Unit=fletch-backup.service
+
+[Install]
+WantedBy=timers.target

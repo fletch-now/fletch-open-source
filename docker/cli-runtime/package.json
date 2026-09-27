@@ -1,0 +1,9 @@
+{
+  "name": "fletch-cli-runtime",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "undici": "8.10.2"
+  },
+  "license": "MIT"
+}

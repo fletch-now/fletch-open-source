@@ -1,0 +1,9 @@
+.fletch-dialog-overlay { position: fixed; inset: 0; z-index: 100; background: #0008; }
+.fletch-dialog-content { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 101; width: min(480px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; padding: 28px; border: 1px solid color-mix(in srgb, var(--text) 20%, transparent); border-radius: var(--radius-panel, 16px); background: var(--surface, white); color: var(--text, #17241d); box-shadow: 0 20px 60px #0003; }
+.fletch-dialog-content > h2 { padding-right: 32px; }
+.fletch-dialog-close { position: absolute; top: 4px; right: 4px; min-width: 44px; min-height: 44px; border: 0; background: transparent; font-size: 24px; }
+.fletch-tabs-list { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: var(--radius-control, 8px); background: color-mix(in srgb, var(--text) 8%, var(--surface)); }
+button.fletch-tabs-trigger { min-height: 44px; padding: 8px 16px; border: 0; border-radius: var(--radius-control, 8px); background: transparent; }
+button.fletch-tabs-trigger[data-state="active"] { background: var(--surface); box-shadow: 0 1px 3px #0002; }
+.fletch-tabs-content { margin-top: 16px; }
+.fletch-dialog-content:focus-visible, .fletch-tabs-trigger:focus-visible, .fletch-tabs-content:focus-visible { outline: 2px solid var(--accent, #286044); outline-offset: 3px; }

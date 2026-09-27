@@ -1,0 +1,11 @@
+.figure { position: relative; width: 100%; max-width: 768px; aspect-ratio: 4 / 3; margin: 20px auto 0; }
+.poster, .video { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; object-fit: contain; }
+.poster img { width: 100%; height: 100%; object-fit: contain; }
+.playback { position: absolute; z-index: 20; bottom: 8px; right: 0; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 1px solid #ffffff30; border-radius: 999px; color: #d5dfce; background: #000b; font: 11px/1.2 var(--font-jetbrains-mono), monospace; cursor: pointer; }
+.playback:hover { border-color: #b7c6a2; color: #fff; }
+.playback:focus-visible { outline: 2px solid #b7c6a2; outline-offset: 4px; }
+.playback:disabled { cursor: default; }
+@media (min-width: 1024px) {
+  .figure { position: absolute; inset: 0; max-width: none; height: 100%; aspect-ratio: auto; margin: 0; }
+  .playback { right: 32px; bottom: 100px; }
+}

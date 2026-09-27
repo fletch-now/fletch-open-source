@@ -1,0 +1,14 @@
+[Unit]
+Description=Keep build containers outside the Fletch management network
+Requires=docker.service
+After=docker.service ufw.service
+PartOf=docker.service
+Before=fletch-build-worker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/fletch-sandbox-network
+RemainAfterExit=yes
+
+[Install]
+WantedBy=docker.service

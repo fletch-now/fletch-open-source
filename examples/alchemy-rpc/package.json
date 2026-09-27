@@ -1,0 +1,16 @@
+{
+  "name": "fletch-alchemy-rpc-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node demo-script.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
+  },
+  "license": "MIT"
+}

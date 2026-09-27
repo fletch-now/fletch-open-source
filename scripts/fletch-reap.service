@@ -1,0 +1,8 @@
+[Unit]
+Description=Fletch reaper (POST /api/internal/reap): fail stuck builds, sweep old workspaces
+After=fletch.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/fletch/fletch.env
+ExecStart=/usr/bin/curl -fsS -X POST -H "x-forge-cron: ${INTERNAL_CRON_SECRET}" http://127.0.0.1:3000/api/internal/reap

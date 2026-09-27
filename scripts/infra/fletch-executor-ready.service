@@ -1,0 +1,9 @@
+[Unit]
+Description=Retry executor dependencies after the control host becomes available
+After=network-online.target wg-quick@wg-fletch.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl start var-lib-fletch-workspaces.mount
+ExecStart=/usr/bin/systemctl start docker.service fletch-sandbox-network.service fletch-model-link.service fletch-model-link-next.service
+TimeoutStartSec=90

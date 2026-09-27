@@ -1,0 +1,8 @@
+{
+  "name": "fletch-webapp",
+  "version": "2.0.4",
+  "fonts": {
+    "ui": "Instrument Sans",
+    "mono": "IBM Plex Mono"
+  }
+}

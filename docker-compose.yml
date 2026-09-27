@@ -1,0 +1,23 @@
+# Local Postgres for testing Forge. Run: docker compose up -d
+# Then point .env.local's DATABASE_URL at it and run the app with `npm run dev`.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: forge-pg
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: forge
+      TZ: UTC
+    command: ["postgres", "-c", "timezone=UTC"]
+    ports:
+      - "127.0.0.1:${FLETCH_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - forge-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  forge-pgdata:

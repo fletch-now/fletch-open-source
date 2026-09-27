@@ -1,0 +1,28 @@
+{
+  "name": "fletch-webapp-template",
+  "private": true,
+  "description": "The dependency set every hosted Fletch front end is built against. Pinned, baked into the sandbox image, mounted read-only; the agent cannot add to it.",
+  "dependencies": {
+    "@radix-ui/react-dialog": "1.1.23",
+    "@radix-ui/react-tabs": "1.1.21",
+    "@reown/appkit": "1.8.23",
+    "@reown/appkit-adapter-wagmi": "1.8.23",
+    "@tanstack/react-query": "5.102.8",
+    "lightweight-charts": "4.2.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "recharts": "2.15.0",
+    "viem": "2.56.0",
+    "wagmi": "3.7.7"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.17",
+    "@types/react-dom": "18.3.5",
+    "@vitejs/plugin-react": "4.3.4",
+    "typescript": "5.9.3",
+    "vite": "5.4.11"
+  },
+  "version": "2.0.4",
+  "type": "module",
+  "license": "MIT"
+}

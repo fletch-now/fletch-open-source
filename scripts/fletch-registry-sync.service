@@ -1,0 +1,20 @@
+# One-shot unit that hits the registry-sync cron endpoint. Triggered by
+# fletch-registry-sync.timer, not enabled directly — see docs/operations/servers.md.
+#
+# Install:
+#   cp scripts/fletch-registry-sync.service scripts/fletch-registry-sync.timer \
+#     /etc/systemd/system/
+#   systemctl daemon-reload
+#   systemctl enable --now fletch-registry-sync.timer
+
+[Unit]
+Description=Fletch registry sync (POST /api/internal/registry-sync)
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/fletch/fletch.env
+# INTERNAL_CRON_SECRET comes from the environment file; curl reads it via $INTERNAL_CRON_SECRET
+# rather than baking it into this unit file, which systemd would otherwise leave
+# world-readable in the journal's command line.
+ExecStart=/usr/bin/curl -fsS -X POST -H "x-forge-cron: ${INTERNAL_CRON_SECRET}" http://127.0.0.1:3000/api/internal/registry-sync

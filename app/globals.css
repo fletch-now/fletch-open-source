@@ -1,0 +1,662 @@
+@import "tailwindcss";
+
+@theme {
+  /* Surfaces — warm off-white, never pure #fff (pure white reads cheap on screens) */
+  --color-paper: #f6f8f1;
+  --color-panel: #ecefe4;
+  --color-raised: #fbfcf7;
+  --color-ink: #0d120e;
+  --color-ink-soft: #39423b;
+  --color-ink-faint: #5b645d;
+  --color-line: rgb(22 38 26 / 0.12);
+  --color-line-strong: rgb(22 38 26 / 0.22);
+
+  /* Chain accent — used sparingly, as punctuation */
+  --color-hood: #00c805;
+  --color-hood-strong: #00e006;
+  --color-hood-deep: #01760e;
+  --color-hood-wash: rgb(0 200 5 / 0.08);
+
+  /* Hero night band — the landing hero resolves from this into paper.
+     Void black: every dark band on the page shares one black. */
+  --color-night: #000000;
+  --color-night-ink: #eef0ec;
+  --color-night-soft: #c6ccc7;
+  --color-night-faint: #a7aea9;
+  --color-night-line: rgb(255 255 255 / 0.2);
+
+  /* Dark surface for the agent console */
+  --color-console: #0c0e0d;
+  --color-console-soft: #161a18;
+  --color-console-line: rgb(255 255 255 / 0.09);
+
+  --radius-card: 14px;
+}
+
+@theme inline {
+  --font-display: var(--font-instrument);
+  --font-sans: var(--font-instrument);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+html,
+body {
+  overscroll-behavior: none;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-hood);
+  color: #000;
+}
+
+/* Display type: geometric sans, tightened so large sizes read as one shape */
+.display {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  /* The reference sets its headlines in the same sans as the body, at regular
+     weight and tight tracking; the size does the work. */
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+
+.mono-label {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+/* Target rings: an archery target from above, doubling as a radar sweep. Replaces
+   the faint grid every AI landing page ships. Hairlines at ~4% opacity, spaced
+   wide, masked so they dissolve well before they reach any text. */
+.bg-rings {
+  background-image: repeating-radial-gradient(
+    circle at 50% 32%,
+    rgb(14 16 15 / 0.05) 0 1px,
+    transparent 1px 92px
+  );
+  mask-image: radial-gradient(ellipse 62% 58% at 50% 30%, #000 8%, transparent 70%);
+}
+
+/* One tighter cluster near the centre, so the rings read as a target's bullseye
+   rather than an evenly-spaced pattern. */
+.bg-rings::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: repeating-radial-gradient(
+    circle at 50% 32%,
+    rgb(0 200 5 / 0.07) 0 1px,
+    transparent 1px 23px
+  );
+  mask-image: radial-gradient(circle 190px at 50% 32%, #000 0%, transparent 72%);
+}
+
+/* A single soft bloom behind the hero — one light source, not a gradient soup */
+.bloom {
+  background: radial-gradient(closest-side, rgb(0 200 5 / 0.10), transparent);
+  filter: blur(6px);
+}
+
+/* Subtle motion: content settles in rather than sliding around */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Orbiting particles on the oracle sphere: one shared keyframe, per-particle
+   period and direction set inline so Tailwind never sees a dynamic class. */
+@keyframes orbit-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* Thin, unobtrusive scrollbars for the console and artifact panes */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(14 16 15 / 0.18) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgb(14 16 15 / 0.16);
+  border-radius: 99px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(14 16 15 / 0.28);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── Toolchain report ─────────────────────────────────────────────────────────
+   The compile/test surface is the moment the product stops being a text
+   generator, so it gets real motion: rows arrive in sequence, the checkmark is
+   drawn rather than faded, and size bars grow to their measured width. */
+@keyframes fr-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fr-draw {
+  from { stroke-dashoffset: 26; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes fr-sweep {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(320%); }
+}
+@keyframes fr-breathe {
+  0%, 100% { opacity: 0.55; }
+  50%      { opacity: 1; }
+}
+
+.fr-item {
+  animation: fr-rise 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.fr-check path {
+  stroke-dasharray: 26;
+  animation: fr-draw 0.5s cubic-bezier(0.65, 0, 0.35, 1) 0.12s both;
+}
+
+/* Bars start at zero width and are given their real width on mount. */
+.fr-bar-fill {
+  transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* A light sweep across the strip while the toolchain is still running. */
+.fr-running {
+  position: relative;
+  overflow: hidden;
+}
+.fr-running::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 30%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+  animation: fr-sweep 1.6s ease-in-out infinite;
+}
+
+.fr-pulse {
+  animation: fr-breathe 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fr-item,
+  .fr-check path,
+  .fr-running::after,
+  .fr-pulse {
+    animation: none;
+  }
+  .fr-bar-fill {
+    transition: none;
+  }
+}
+
+/* ── Hero night band ──────────────────────────────────────────────────────────
+   The landing hero is a self-contained night scene that resolves into the paper
+   page through an engineered horizon. Ported from a reference hero whose
+   background is a lit tree at night: a dark ground, one buried light, motes
+   drifting through it, and a glowing ridge along the foreground hill. Told here
+   in Fletch's own vocabulary — target rings, a ballistic arc, drifting vanes —
+   because a drawn tree would be a picture, and this product is not decorative.
+
+   Layers stack by DOM order alone. No z-index: the hero's existing rings/arc/
+   bloom rely on source order, and one positive z would silently reorder them. */
+
+.hero-night {
+  /* The ground the scene composites over; void black like every night band. */
+  background: #000;
+}
+
+/* The reference's headline is left-aligned against a light source on the right, so
+   its scrim ramps left-to-right. Ours is centred, which puts the type over the
+   brightest part of the frame — this restores the same contrast for a centre column. */
+.hero-night .night-center {
+  background:
+    radial-gradient(56% 44% at 50% 34%, rgb(3 5 4 / 0.7), rgb(3 5 4 / 0.3) 62%, transparent 86%),
+    radial-gradient(46% 34% at 50% 74%, rgb(3 5 4 / 0.6), transparent 80%);
+}
+
+/* Ground: void black, like every night band on the page. The only paint left is
+   one deliberately off-axis green pool — perfect symmetry is what makes a CSS
+   background read as a CSS background. */
+.hero-night .night {
+  background:
+    radial-gradient(46% 38% at 64% 30%, rgb(0 200 5 / 0.05), transparent 72%),
+    #000;
+}
+
+/* The existing target rings, inverted by scope only. /not-found shares this class
+   and must stay light, so the masks are inherited from the base rule untouched. */
+.hero-night .bg-rings {
+  background-image: repeating-radial-gradient(
+    circle at 50% 32%,
+    rgb(255 255 255 / 0.07) 0 1px,
+    transparent 1px 92px
+  );
+}
+
+.hero-night .bg-rings::after {
+  background-image: repeating-radial-gradient(
+    circle at 50% 32%,
+    rgb(0 200 5 / 0.2) 0 1px,
+    transparent 1px 23px
+  );
+}
+
+/* The reference's 12×8 hairline grid, as one element instead of twenty divs.
+   Masked to the periphery so it frames the rings rather than fighting them. */
+/* The reference's 12 x 8 hairline grid over the footage, at its own opacity. */
+.hero-night .night-grid {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.1) 1px, transparent 1px);
+  background-size: 8.3333% 12.5%;
+  opacity: 0.2;
+}
+
+/* mask-image fails open — an unsupported browser would paint the grid at full
+   strength across the whole band. Hide it rather than ship the broken state. */
+@supports not (mask-image: radial-gradient(#000, transparent)) {
+  .hero-night .night-grid {
+    display: none;
+  }
+}
+
+.hero-night .bloom {
+  background: radial-gradient(closest-side, rgb(0 200 5 / 0.2), rgb(0 200 5 / 0.045) 58%, transparent);
+  filter: blur(10px);
+}
+
+/* Drifting motes — the reference's falling petals. Two tiled planes at different
+   scales and speeds. The tile size is the single source of truth: the keyframe
+   translates by exactly one tile on both axes, so the loop is seamless and needs
+   no crossfade. Transform-only, no JS, no canvas, no per-frame work. */
+.motes::before,
+.motes::after {
+  --tw: 340px;
+  --th: 300px;
+  content: "";
+  position: absolute;
+  inset: -25% -12%;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgb(226 255 228 / 0.85) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 63% 41%, rgb(0 200 5 / 0.5) 0 1.4px, transparent 2px),
+    radial-gradient(circle at 34% 77%, rgb(226 255 228 / 0.5) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 86% 64%, rgb(0 200 5 / 0.38) 0 1.2px, transparent 1.8px),
+    radial-gradient(circle at 48% 9%, rgb(255 255 255 / 0.5) 0 0.9px, transparent 1.4px),
+    radial-gradient(circle at 78% 22%, rgb(226 255 228 / 0.42) 0 1px, transparent 1.5px),
+    radial-gradient(circle at 24% 55%, rgb(255 255 255 / 0.34) 0 0.8px, transparent 1.3px),
+    radial-gradient(circle at 92% 88%, rgb(226 255 228 / 0.4) 0 1px, transparent 1.5px);
+  background-size: var(--tw) var(--th);
+  /* Keeps motes in the sky and off the console card entirely. */
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 10%, #000 58%, transparent 82%);
+  animation: mote-drift 34s linear infinite;
+  will-change: transform;
+}
+
+.motes::after {
+  --tw: 214px;
+  --th: 190px;
+  opacity: 0.6;
+  animation-duration: 53s;
+}
+
+@keyframes mote-drift {
+  to {
+    transform: translate3d(calc(var(--tw) * -1), var(--th), 0);
+  }
+}
+
+/* Off-screen animation is wasted work on every device and battery. */
+.hero-night[data-hero-visible="false"] .motes::before,
+.hero-night[data-hero-visible="false"] .motes::after {
+  animation-play-state: paused;
+}
+
+/* Film grain. Load-bearing rather than decorative: the horizon is a wide 8-bit
+   luminance ramp and will band on cheap panels without it. Desaturated, because
+   raw fractalNoise is chroma speckle. */
+.grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.055;
+  mix-blend-mode: screen;
+}
+
+/* .mono-label hardcodes its own colour, so the hero eyebrow needs a scoped rule. */
+.hero-night .mono-label {
+  color: var(--color-night-faint);
+}
+
+/* One-shot blur-in for the headline. This is all that survives of the reference's
+   per-letter BlurWord: no spans, no rAF, no colour cycling, no 2.5s loop.
+   A new class rather than retuning .rise, which every streamed chat row uses. */
+@keyframes rise-blur {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: none;
+  }
+}
+
+.rise-blur {
+  animation: rise-blur 0.46s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* The console card's lift: a hairline rim so the edge reads against near-black,
+   and a plain drop shadow. No colour in it and nothing that follows the pointer —
+   the card should sit still and be easy to use, not perform. */
+.console-lift {
+  border-radius: 1.5rem;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.1),
+    0 18px 40px -16px rgb(0 0 0 / 0.75),
+    0 48px 90px -36px rgb(0 0 0 / 0.85);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise-blur {
+    animation: none;
+  }
+
+  .motes::before,
+  .motes::after {
+    animation: none;
+  }
+
+  .hero-night .horizon::before {
+    animation: none;
+  }
+}
+
+/* Scroll-triggered entrance for the marketing sections. Transition rather than
+   animation, so a revealed block holds its final state with no fill-mode subtlety. */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.revealed {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Scroll-triggered entrance for the marketing sections. A transition rather than an
+   animation, so a revealed block simply holds its final state. */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal.revealed {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Orbital sphere canvas host. The canvas is sized in device pixels by the renderer
+   and laid out in CSS pixels here. */
+.threeui-background {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.threeui-background > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Outline display type — the reference draws a headline's second line as a shape
+   rather than a colour, which is what keeps a 6rem word from overwhelming the page. */
+.outline-type {
+  color: transparent;
+  -webkit-text-stroke: 1.5px var(--color-ink);
+}
+
+@media (max-width: 640px) {
+  /* A 1.5px stroke on a small glyph closes up its counters and reads as a blob. */
+  .outline-type {
+    -webkit-text-stroke-width: 1px;
+  }
+}
+
+/* A pool of shadow under the launcher card. The card is near-opaque already; this
+   keeps the area around it dark too, so the whole composition reads as one panel
+   rather than a bright rectangle with a dark box dropped on it. */
+.hero-night .console-pool {
+  background: radial-gradient(58% 62% at 50% 62%, rgb(3 5 4 / 0.72), rgb(3 5 4 / 0.28) 62%, transparent 82%);
+}
+
+/* ── The whale ────────────────────────────────────────────────────────────────
+   Two transforms on two elements rather than one compound animation: the outer
+   element carries the crossing, the inner one the bob, so the vertical motion is
+   independent of how far across the section it has travelled. */
+@keyframes whale-swim {
+  from {
+    transform: translate3d(-30%, 0, 0);
+  }
+  to {
+    transform: translate3d(130%, 0, 0);
+  }
+}
+
+@keyframes whale-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2.5deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(2deg);
+  }
+}
+
+.whale-swim {
+  left: 0;
+  animation: whale-swim 54s linear infinite;
+  will-change: transform;
+}
+
+.whale-bob {
+  animation: whale-bob 9s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .whale-swim,
+  .whale-bob {
+    animation: none;
+  }
+  /* Parked mid-section rather than off-screen left, so it is still composed. */
+  .whale-swim {
+    transform: translate3d(38%, 0, 0);
+  }
+}
+
+/* ── Band entry dissolve ──────────────────────────────────────────────────────
+   The mirror of the hero's exit. A dark band dropped straight onto paper meets it
+   at a ruled line; this dissolves the join the same way — a smooth paper ramp with
+   a second, noise-masked copy over it, so the two grounds interleave in a stipple
+   instead of butting together. Reused by every dark band on the page. */
+/* Band edges.
+   The previous treatment ramped paper down to transparent over the dark band, and
+   paper at half alpha over near-black is mid-grey — so the transition spent 150px
+   passing through the one value that looks worst. The reference does not ramp at
+   all; its dark bands simply begin. This keeps that crispness and spends the edge
+   on the accent instead: a hairline in the chain's green, with a short glow bleeding
+   inward so the band looks lit at its boundary rather than cut. */
+.band-edge {
+  position: absolute;
+  inset-inline: 0;
+  height: 88px;
+  pointer-events: none;
+}
+
+.band-edge-top {
+  top: 0;
+  background-image: linear-gradient(to bottom, rgb(1 118 14 / 0.16), transparent 78%);
+}
+
+.band-edge-top::after,
+.band-edge-bottom::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(0 200 5 / 0.28) 22%,
+    rgb(0 200 5 / 0.55) 50%,
+    rgb(0 200 5 / 0.28) 78%,
+    transparent
+  );
+}
+
+.band-edge-top::after {
+  top: 0;
+}
+
+.band-edge-bottom {
+  bottom: 0;
+  background-image: linear-gradient(to top, rgb(1 118 14 / 0.16), transparent 78%);
+}
+
+.band-edge-bottom::after {
+  bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .band-edge {
+    height: 60px;
+  }
+}
+
+/* Marquee for the proof band's chain-fact strip. Two identical tracks translated by
+   exactly half the pair's width, so the loop has no visible reset. */
+@keyframes marquee-track {
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.marquee {
+  width: max-content;
+  animation: marquee-track 42s linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    animation: none;
+  }
+}
+
+/* The hero figure: a slow drift and a slower breath in the glow beneath it. Twelve
+   and eight seconds, so the motion registers only on a second look. */
+.hero-drift {
+  animation: hero-drift 12s ease-in-out infinite;
+}
+@keyframes hero-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -10px, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-drift { animation: none; }
+}
+
+/* The build page's app badges sit on one line that scrolls sideways; the bar is
+   28px tall, and a scrollbar inside it would take a third of that. */
+.app-strip {
+  scrollbar-width: none;
+}
+
+.app-strip::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes file-arrival {
+  from { opacity: 0.35; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 639px) {
+  .dashboard-settings :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea),
+  [data-watcher-form] :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+    font-size: 16px;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .dashboard-settings :is(button, select) { min-height: 44px; }
+}

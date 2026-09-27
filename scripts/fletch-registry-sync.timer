@@ -1,0 +1,13 @@
+# Runs fletch-registry-sync.service every 15 minutes. Registry staleness under 2x
+# review sync intervals against the needs of your own installation.
+
+[Unit]
+Description=Run Fletch registry sync every 15 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

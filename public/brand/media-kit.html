@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fletch Media Kit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Geist:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --ground: #f6f8f1;
+    --raised: #fbfcf7;
+    --sunk: #ecefe4;
+    --ink: #0d120e;
+    --ink-soft: #39423b;
+    --ink-mute: #5b645d;
+    --rule: rgb(22 38 26 / 0.12);
+    --rule-firm: rgb(22 38 26 / 0.22);
+    --hood: #00c805;
+    --hood-deep: #01760e;
+    --moss: #8a9a45;
+    --bark: #3d3128;
+    --black: #0a0a0a;
+    --cream: #f1ede4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0e110f; --raised: #151a16; --sunk: #1a201b;
+      --ink: #e9ede8; --ink-soft: #b3bcb4; --ink-mute: #8a938c;
+      --rule: rgb(233 237 232 / 0.14); --rule-firm: rgb(233 237 232 / 0.26);
+      --hood-deep: #6cbd8b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0e110f; --raised: #151a16; --sunk: #1a201b;
+    --ink: #e9ede8; --ink-soft: #b3bcb4; --ink-mute: #8a938c;
+    --rule: rgb(233 237 232 / 0.14); --rule-firm: rgb(233 237 232 / 0.26);
+    --hood-deep: #6cbd8b;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: Geist, ui-sans-serif, system-ui, sans-serif;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px 96px; }
+  .display { font-family: Sora, ui-sans-serif, system-ui, sans-serif; font-weight: 600; letter-spacing: -0.035em; line-height: 1.02; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .label { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-mute); }
+
+  header.mast { padding: 72px 0 32px; border-bottom: 1px solid var(--rule-firm); margin-bottom: 40px; }
+  header.mast h1 { font-size: clamp(2.2rem, 5vw, 3.6rem); margin: 14px 0 12px; max-width: 16ch; text-wrap: balance; }
+  header.mast p { color: var(--ink-soft); max-width: 58ch; margin: 0; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 22px; font-size: 12px; color: var(--ink-mute); font-family: "JetBrains Mono", ui-monospace, monospace; }
+
+  section { margin-bottom: 56px; }
+  h2 { font-family: Sora, ui-sans-serif, sans-serif; font-weight: 600; letter-spacing: -0.02em; font-size: 1.6rem; margin: 0 0 6px; }
+  .note { color: var(--ink-mute); font-size: 14px; margin: 0 0 20px; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
+  p { max-width: 66ch; }
+
+  .grid { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+  .g2 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .g3 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  .tile { background: var(--raised); padding: 18px; }
+  .tile .label { display: block; margin-bottom: 10px; }
+  .swatch { display: flex; align-items: center; justify-content: center; height: 150px; border-radius: 4px; }
+  .swatch svg { width: 84px; height: 84px; }
+
+  .lockup { display: flex; align-items: center; justify-content: center; padding: 40px 24px; border-radius: 4px; }
+  .lockup svg { width: min(100%, 640px); height: auto; }
+
+  .clear { position: relative; display: inline-block; padding: 44px; border: 1px dashed var(--rule-firm); border-radius: 4px; background: var(--sunk); }
+  .clear svg { width: 96px; height: 96px; display: block; }
+  .clear .x { position: absolute; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 10px; color: var(--ink-mute); }
+  .clear .x.top { top: 14px; left: 50%; transform: translateX(-50%); }
+  .clear .x.left { left: 12px; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+
+  .sizes { display: flex; align-items: flex-end; gap: 28px; flex-wrap: wrap; }
+  .sizes div { text-align: center; }
+  .sizes .label { display: block; margin-top: 8px; }
+
+  .colors { display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+  .color { background: var(--raised); }
+  .color .chip { height: 92px; }
+  .color .body { padding: 12px 14px; }
+  .color .name { font-weight: 500; font-size: 14px; }
+  .color .hex { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; color: var(--ink-mute); }
+  .color .use { font-size: 12.5px; color: var(--ink-soft); margin-top: 4px; }
+
+  .type { display: grid; gap: 1px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+  .type .tile .sample { font-size: 30px; margin: 8px 0 10px; }
+  .type .tile .role { font-size: 13px; color: var(--ink-soft); }
+
+  ul.rules { padding-left: 18px; margin: 0; }
+  ul.rules li { margin-bottom: 8px; color: var(--ink-soft); }
+  .dodont { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .dodont h3 { margin: 0 0 8px; font-size: 14px; }
+  .dodont h3.ok { color: var(--hood-deep); }
+  .dodont h3.no { color: #a8321f; }
+
+  a { color: var(--hood-deep); }
+  code { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.86em; background: var(--sunk); padding: 0.1em 0.35em; border-radius: 3px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 9px 12px 9px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-mute); font-weight: 400; }
+  footer { border-top: 1px solid var(--rule-firm); padding-top: 18px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; color: var(--ink-mute); }
+  :focus-visible { outline: 2px solid var(--hood); outline-offset: 2px; }
+</style>
+</head>
+<body>
+
+
+<!-- The mark, once, reused everywhere below. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="mark" viewBox="0 0 24 24">
+      <path d="M21.2 1.0 L17.5 7.8 L16.6 11.7 L16.6 14.0 L17.3 16.6 L11.0 16.8 L9.9 18.0 L7.8 19.7 L4.8 23.0 L4.5 21.6 L4.9 18.2 L6.2 14.9 L7.3 13.3 L7.3 11.4 L6.4 11.2 L2.8 11.0 L2.9 10.5 L4.0 9.1 L5.3 8.3 L8.2 6.4 L10.1 5.3 L11.6 4.2 L13.1 3.4 L17.7 1.7 Z" fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <header class="mast">
+    <span class="label">Brand · v1 draft</span>
+    <h1 class="display">Fletch media kit</h1>
+    <p>The mark is an arrowhead: a fletcher makes arrows, and this one is cut from bark with moss along the edges, pointing up and to the right. Everything here is derived from the banner and the product's own palette. Files are served from <span class="mono">fletch.now/brand/</span>.</p>
+    <div class="meta">
+      <span>domain fletch.now</span>
+      <span>chain Robinhood Chain · 4663</span>
+      <span>revised 1 Sep 2026 · v2</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>The mark</h2>
+    <p class="note">One shape, traced from the banner photograph. The concave notch at the base is what reads as an arrowhead rather than a triangle, and it is the detail that must survive at small sizes.</p>
+    <div class="grid g3">
+      <div class="tile"><span class="label">green on black · primary</span><div class="swatch" style="background:#0a0a0a;color:#00c805"><svg><use href="#mark"/></svg></div></div>
+      <div class="tile"><span class="label">cream on black</span><div class="swatch" style="background:#0a0a0a;color:#f1ede4"><svg><use href="#mark"/></svg></div></div>
+      <div class="tile"><span class="label">black on cream</span><div class="swatch" style="background:#f1ede4;color:#0a0a0a"><svg><use href="#mark"/></svg></div></div>
+      <div class="tile"><span class="label">moss on bark · the banner's own colours</span><div class="swatch" style="background:#3d3128;color:#8a9a45"><svg><use href="#mark"/></svg></div></div>
+      <div class="tile"><span class="label">green on paper</span><div class="swatch" style="background:#f6f8f1;color:#01760e"><svg><use href="#mark"/></svg></div></div>
+      <div class="tile"><span class="label">black on green · reversed, sparing</span><div class="swatch" style="background:#00c805;color:#0a0a0a"><svg><use href="#mark"/></svg></div></div>
+    </div>
+
+    <div class="grid g2" style="margin-top:16px">
+      <div class="tile"><span class="label">the photograph · cut out, transparent</span><div class="swatch" style="background:#0a0a0a;height:260px"><img src="arrow-photo.png" alt="The arrowhead cut from the banner: bark with moss along its edges" style="height:240px;width:240px"></div></div>
+      <div class="tile"><span class="label">the silhouette · smooth vector, 1000-box</span><div class="swatch" style="background:#0a0a0a;height:260px"><svg viewBox="0 0 1000 1000" style="width:240px;height:240px"><path d="M877.6 50.0 C877.6 50.0 758.5 257.0 726.9 330.0 C695.4 403.1 694.7 446.6 688.3 488.4 C681.9 530.3 683.8 547.6 688.3 581.1 C692.8 614.6 715.3 689.3 715.3 689.3 C715.3 689.3 510.9 687.7 460.4 697.0 C409.9 706.3 434.3 725.6 412.1 745.3 C389.9 764.9 361.6 780.7 327.1 814.8 C292.7 848.9 205.5 950.0 205.5 950.0 C205.5 950.0 192.9 924.6 193.9 892.1 C194.8 859.5 200.0 800.6 211.3 754.9 C222.5 709.2 245.7 651.3 261.5 617.8 C277.3 584.3 298.2 577.6 305.9 554.1 C313.6 530.6 313.6 491.6 307.8 476.8 C302.0 462.0 302.0 468.5 271.1 465.2 C240.2 462.0 122.4 457.5 122.4 457.5 C122.4 457.5 117.9 451.1 126.3 438.2 C134.7 425.3 156.2 395.4 172.6 380.3 C189.1 365.1 196.5 365.8 224.8 347.4 C253.1 329.1 309.8 290.5 342.6 270.2 C375.4 249.9 398.0 240.9 421.8 225.8 C445.6 210.6 465.2 192.3 485.5 179.4 C505.8 166.5 501.9 165.2 543.5 148.5 C585.0 131.8 679.0 95.4 734.7 79.0 C790.3 62.6 877.6 50.0 877.6 50.0 Z" fill="#00c805"/></svg></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Lockups</h2>
+    <p class="note">Mark, wordmark, and the domain in mono beneath. The wordmark is Sora at 600, tracked tight; the domain is JetBrains Mono, tracked wide.</p>
+    <div class="grid g2">
+      <div class="tile">
+        <span class="label">dark</span>
+        <div class="lockup" style="background:#0a0a0a">
+          <svg viewBox="0 0 960 320" role="img" aria-label="Fletch lockup, dark">
+            <g transform="translate(96 88) scale(6)" style="color:#00c805"><use href="#mark" width="24" height="24"/></g>
+            <text x="290" y="205" font-family="Sora, ui-sans-serif, sans-serif" font-size="150" font-weight="600" letter-spacing="-6" fill="#f1ede4">Fletch</text>
+            <text x="296" y="262" font-family="JetBrains Mono, ui-monospace, monospace" font-size="26" letter-spacing="3" fill="#f1ede4" fill-opacity="0.6">fletch.now</text>
+          </svg>
+        </div>
+      </div>
+      <div class="tile">
+        <span class="label">light</span>
+        <div class="lockup" style="background:#f1ede4">
+          <svg viewBox="0 0 960 320" role="img" aria-label="Fletch lockup, light">
+            <g transform="translate(96 88) scale(6)" style="color:#00c805"><use href="#mark" width="24" height="24"/></g>
+            <text x="290" y="205" font-family="Sora, ui-sans-serif, sans-serif" font-size="150" font-weight="600" letter-spacing="-6" fill="#0a0a0a">Fletch</text>
+            <text x="296" y="262" font-family="JetBrains Mono, ui-monospace, monospace" font-size="26" letter-spacing="3" fill="#0a0a0a" fill-opacity="0.6">fletch.now</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Clear space and minimum size</h2>
+    <p class="note">Keep a margin around the mark equal to the height of its notch, roughly a quarter of the mark's width. Below 16 pixels the barbs merge; use the mark alone, never the lockup, at those sizes.</p>
+    <div style="display:flex;gap:40px;flex-wrap:wrap;align-items:flex-start">
+      <div class="clear" style="color:var(--ink)">
+        <span class="x top">¼ w</span><span class="x left">¼ w</span>
+        <svg><use href="#mark"/></svg>
+      </div>
+      <div class="sizes" style="color:var(--ink)">
+        <div><svg width="16" height="16"><use href="#mark"/></svg><span class="label">16 · favicon</span></div>
+        <div><svg width="24" height="24"><use href="#mark"/></svg><span class="label">24 · nav</span></div>
+        <div><svg width="40" height="40"><use href="#mark"/></svg><span class="label">40 · avatar</span></div>
+        <div><svg width="64" height="64"><use href="#mark"/></svg><span class="label">64 · app icon</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Colour</h2>
+    <p class="note">Two families. The banner's — near-black, cream, bark and moss — for print and social. The product's — paper, ink and the chain's green — for the site and app. Green is punctuation, spent on the one thing that just changed.</p>
+    <div class="colors">
+      <div class="color"><div class="chip" style="background:#0a0a0a"></div><div class="body"><div class="name">Black</div><div class="hex">#0A0A0A</div><div class="use">Banner ground, dark lockups</div></div></div>
+      <div class="color"><div class="chip" style="background:#f1ede4"></div><div class="body"><div class="name">Cream</div><div class="hex">#F1EDE4</div><div class="use">Wordmark on black, light lockups</div></div></div>
+      <div class="color"><div class="chip" style="background:#3d3128"></div><div class="body"><div class="name">Bark</div><div class="hex">#3D3128</div><div class="use">The arrowhead's body</div></div></div>
+      <div class="color"><div class="chip" style="background:#8a9a45"></div><div class="body"><div class="name">Moss</div><div class="hex">#8A9A45</div><div class="use">Along the arrowhead's edges</div></div></div>
+      <div class="color"><div class="chip" style="background:#00c805"></div><div class="body"><div class="name">Hood</div><div class="hex">#00C805</div><div class="use">The accent; the chain's green</div></div></div>
+      <div class="color"><div class="chip" style="background:#01760e"></div><div class="body"><div class="name">Hood deep</div><div class="hex">#01760E</div><div class="use">Green on light grounds · 5.5:1 on paper</div></div></div>
+      <div class="color"><div class="chip" style="background:#f6f8f1;border-bottom:1px solid var(--rule)"></div><div class="body"><div class="name">Paper</div><div class="hex">#F6F8F1</div><div class="use">Site and app ground</div></div></div>
+      <div class="color"><div class="chip" style="background:#0d120e"></div><div class="body"><div class="name">Ink</div><div class="hex">#0D120E</div><div class="use">Type on paper · 17.7:1</div></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Type</h2>
+    <p class="note">Three faces, three jobs. Never more than one display size per screen.</p>
+    <div class="type">
+      <div class="tile"><span class="label">display · Sora 600</span><div class="sample display">Type it. It ships.</div><div class="role">Headlines and the wordmark. Tracked −3.5%, leading 0.9–1.0.</div></div>
+      <div class="tile"><span class="label">body · Geist 400/500</span><div class="sample" style="font-size:22px">Describe an app in plain English.</div><div class="role">Everything read. 15–17px on the site, line height 1.6–1.8.</div></div>
+      <div class="tile"><span class="label">data · JetBrains Mono</span><div class="sample mono" style="font-size:20px">chain id 4663 · solc 0.8.28</div><div class="role">Addresses, ids, labels, and the domain. Tracked +8% when uppercase.</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Use</h2>
+    <p class="note">Short rules that keep the mark recognisable.</p>
+    <div class="dodont">
+      <div>
+        <h3 class="ok">Do</h3>
+        <ul class="rules">
+          <li>Point the arrow up and to the right, as drawn. It is a direction, not a decoration.</li>
+          <li>Use one colour per mark. Green on dark, deep green or ink on light.</li>
+          <li>Pair it with the wordmark in Sora, or use it alone at small sizes.</li>
+          <li>Put it on a plain ground with clear space around it.</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="no">Don't</h3>
+        <ul class="rules">
+          <li>Rotate it to point elsewhere, mirror it, or fill the notch.</li>
+          <li>Add gradients, outlines, drop shadows, or a second colour inside the shape.</li>
+          <li>Set the wordmark in any face other than Sora, or letter-space it.</li>
+          <li>Place it over busy photography without a scrim behind it.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Files</h2>
+    <p class="note">Vector, served from the site. The banner itself (bark and moss render) is the master image for social and print.</p>
+    <table>
+      <thead><tr><th>File</th><th>What</th></tr></thead>
+      <tbody>
+        <tr><td><a href="https://fletch.now/brand/mark-green-on-black.svg">mark-green-on-black.svg</a></td><td>Primary mark, 256px tile</td></tr>
+        <tr><td><a href="https://fletch.now/brand/mark-cream-on-black.svg">mark-cream-on-black.svg</a></td><td>Mark for dark grounds without the accent</td></tr>
+        <tr><td><a href="https://fletch.now/brand/mark-black-on-cream.svg">mark-black-on-cream.svg</a></td><td>Mark for light grounds</td></tr>
+        <tr><td><a href="https://fletch.now/brand/mark-green.svg">mark-green.svg</a> · <a href="https://fletch.now/brand/mark-black.svg">mark-black.svg</a></td><td>Transparent, for placing on your own ground</td></tr>
+        <tr><td><a href="https://fletch.now/brand/mark-moss-on-bark.svg">mark-moss-on-bark.svg</a></td><td>The banner's palette as a flat tile</td></tr>
+        <tr><td><a href="https://fletch.now/brand/lockup-dark.svg">lockup-dark.svg</a> · <a href="https://fletch.now/brand/lockup-light.svg">lockup-light.svg</a></td><td>Mark + wordmark + domain, 960×320</td></tr>
+        <tr><td><a href="https://fletch.now/brand/mark-vector.svg">mark-vector.svg</a> · <a href="https://fletch.now/brand/mark-vector-black.svg">-black</a> · <a href="https://fletch.now/brand/mark-vector-cream.svg">-cream</a></td><td>Smooth vector silhouette, 1000×1000, for print and large sizes</td></tr>
+        <tr><td><a href="https://fletch.now/brand/mark-photo.svg">mark-photo.svg</a> · <a href="https://fletch.now/brand/arrow-photo.png">arrow-photo.png</a></td><td>The photographed arrowhead, transparent, 1024×1024</td></tr>
+        <tr><td><a href="https://fletch.now/brand/mark-green-2048.png">mark-green-2048.png</a> · <a href="https://fletch.now/brand/mark-green-512.png">-512</a></td><td>Flat green silhouette, transparent PNG</td></tr>
+        <tr><td><a href="https://fletch.now/brand/arrow-albedo.jpg">arrow-albedo.jpg</a> · <a href="https://fletch.now/brand/arrow-alpha.png">arrow-alpha.png</a> · <a href="https://fletch.now/brand/arrow-normal.jpg">arrow-normal.jpg</a></td><td>Colour, cut-out, and relief maps of the arrowhead, for 3D and motion work</td></tr>
+        <tr><td><a href="https://fletch.now/brand/fletch-banner.jpg">fletch-banner.jpg</a></td><td>Master render — bark arrowhead with moss and wordmark, 1654×1101</td></tr>
+        <tr><td><a href="https://fletch.now/brand/media-kit.html">media-kit.html</a></td><td>This page, as served from the site</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer>Draft v1. The arrowheads rising through the hero on fletch.now are this silhouette extruded; the SVG is its flat form.</footer>
+</div>
+
+</body>
+</html>

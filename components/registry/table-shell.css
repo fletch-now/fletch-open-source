@@ -1,0 +1,139 @@
+.registry-table-scope {
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+}
+
+.registry-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border: 1px solid var(--color-line, #e4e4e1);
+  border-radius: var(--radius-card, 12px);
+  background: var(--color-raised, #fff);
+}
+
+.registry-table-scroll:focus-visible {
+  outline: 2px solid var(--color-ink, #141414);
+  outline-offset: 3px;
+}
+
+.registry-table-scope table,
+.registry-table-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--color-ink, #141414);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.registry-table-scope thead th,
+.registry-table-scroll thead th {
+  padding: 13px 16px;
+  background: #f6f6f4;
+  border-bottom: 1px solid var(--color-line, #e4e4e1);
+  color: var(--color-ink, #141414);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.registry-table-scope tbody td,
+.registry-table-scroll tbody td {
+  padding: 16px;
+  color: var(--color-ink, #141414);
+  font-size: 14px;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+
+.registry-table-scope table:not(.registry-token-markets) tbody :is(p, a, span),
+.registry-table-scroll table:not(.registry-token-markets) tbody :is(p, a, span) {
+  font-size: inherit;
+}
+
+.registry-table-scope table .text-ink-soft,
+.registry-table-scope table .text-ink-faint,
+.registry-table-scroll table .text-ink-soft,
+.registry-table-scroll table .text-ink-faint {
+  color: var(--color-ink, #141414);
+}
+
+.registry-table-scope table .text-right,
+.registry-table-scroll table .text-right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.registry-table-scope tbody tr:hover,
+.registry-table-scroll tbody tr:hover {
+  background: #fafaf8;
+}
+
+.registry-table-scope tbody tr:focus-within,
+.registry-table-scroll tbody tr:focus-within {
+  background: #f4f4f0;
+}
+
+.registry-table-scope td .truncate,
+.registry-table-scroll td .truncate {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.registry-table-scroll .registry-token-markets {
+  table-layout: fixed;
+}
+
+.registry-token-metric-value {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+.registry-token-metric > p:not(.registry-token-metric-value),
+.registry-token-metric .registry-metric-source,
+.registry-token-metric .registry-metric-source-label {
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.registry-token-metric .registry-metric-source-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Market rows keep identity fixed while values remain comparable on small screens. */
+.registry-table-scroll .registry-token-markets tbody td { padding: 12px 14px; }
+.registry-token-markets tbody .text-ink-soft { color: var(--color-ink-soft, #666660); }
+.registry-token-markets .registry-token-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.registry-token-markets :is(th, td):first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--color-raised, #fff);
+  border-right: 1px solid var(--color-line, #e4e4e1);
+}
+.registry-token-markets thead th:first-child { background: #f6f6f4; }
+.registry-token-markets tbody tr:hover td:first-child { background: #fafaf8; }
+.registry-token-markets .registry-app-status p,
+.registry-token-markets .registry-app-status p :is(a, time, span) { font-size: 12px; line-height: 18px; }
+@media (max-width: 639px) {
+  .registry-token-markets col:first-child { width: 155px !important; }
+  .registry-table-scroll .registry-token-markets { min-width: 1005px !important; }
+  .registry-token-markets .registry-token-identity { max-width: 155px; }
+}

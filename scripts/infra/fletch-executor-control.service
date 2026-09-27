@@ -1,0 +1,21 @@
+[Unit]
+Description=Persistent SSH transport to the build-only Fletch executor
+Requires=wg-quick@wg-fletch.service
+After=network-online.target wg-quick@wg-fletch.service
+
+[Service]
+User=fletch
+Group=fletch
+RuntimeDirectory=fletch-executor
+RuntimeDirectoryMode=0700
+ExecStart=/usr/bin/ssh -MN -o ControlMaster=yes fletch-executor
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+RestrictAddressFamilies=AF_INET AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

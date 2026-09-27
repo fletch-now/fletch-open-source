@@ -1,0 +1,10 @@
+[Unit]
+Description=Run the Fletch reaper every 15 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+Unit=fletch-reap.service
+
+[Install]
+WantedBy=timers.target

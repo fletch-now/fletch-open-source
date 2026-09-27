@@ -1,0 +1,21 @@
+[Unit]
+Description=Relay scoped model requests to the original Fletch credential proxy
+Requires=wg-quick@wg-fletch.service docker.service
+After=network-online.target wg-quick@wg-fletch.service docker.service
+PartOf=docker.service
+
+[Service]
+User=fletch-model-link
+ExecStart=/usr/bin/ssh -NT -o BatchMode=yes -o IdentitiesOnly=yes -o IdentityAgent=none -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/etc/fletch/model-link/known_hosts -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i /etc/fletch/model-link/id_ed25519 -L 172.17.0.1:3902:172.17.0.1:3902 fletch-model-link@10.77.0.1
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+RestrictAddressFamilies=AF_INET AF_UNIX
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

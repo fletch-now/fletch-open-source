@@ -1,0 +1,24 @@
+[Unit]
+Description=Fletch independent build worker
+After=postgresql.service network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=fletch
+EnvironmentFile=/etc/fletch/fletch.env
+# Web releases never replace this worker release directory.
+WorkingDirectory=/opt/fletch/build-worker
+Environment=FORGE_PROXY_PORT=3902
+ExecStart=/usr/bin/node --conditions=react-server --import tsx workers/build.ts
+Restart=always
+RestartSec=5
+KillMode=control-group
+TimeoutStopSec=180
+PrivateTmp=true
+ProtectSystem=full
+# The sudo publication helper inherits this mount namespace.
+ReadWritePaths=/var/lib/fletch/workspaces /var/lib/fletch/sites /etc/letsencrypt /var/log/letsencrypt /var/lib/letsencrypt /etc/nginx/apps-certs
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

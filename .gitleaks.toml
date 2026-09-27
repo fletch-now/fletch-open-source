@@ -1,0 +1,30 @@
+title = "Fletch public-source secret scanning"
+[extend]
+useDefault = true
+
+# Exact public identifiers / method names that the generic-key heuristic matches.
+# No whole directory, test suite, or generic secret pattern is excluded.
+[[allowlists]]
+description = "Public on-chain contract address used by docs"
+condition = "AND"
+paths = ['^lib/docs/content\.ts$']
+regexTarget = "match"
+regexes = ['TOKEN_EXAMPLE = "0x6bac06600d220ac5ac281ad1f504d2cf0f90f6e6"']
+[[allowlists]]
+description = "Public on-chain contract address in numeric unit test"
+condition = "AND"
+paths = ['^lib/registry/authority/depth\.test\.ts$']
+regexTarget = "match"
+regexes = ['TOKEN = "0xa9615db578ac13d52eb9e100d22e9f6b3548df3d"']
+[[allowlists]]
+description = "Prose, not an authentication token"
+condition = "AND"
+paths = ['^lib/docs/registry-jobs\.ts$']
+regexTarget = "match"
+regexes = ['Token quotes, halt/divergence']
+[[allowlists]]
+description = "Liquidity algorithm identifier, not a secret"
+condition = "AND"
+paths = ['^lib/registry/priority\.ts$']
+regexTarget = "match"
+regexes = ['token, "(?:v4_bounded_one_percent|v3_quote_holdings)"']

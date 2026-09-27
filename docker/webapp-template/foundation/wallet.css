@@ -1,0 +1,18 @@
+/* Scoped wallet chrome uses the app's palette and never expands its header. */
+.fletch-wallet { width: fit-content; max-width: 100%; justify-self: end; }
+.fletch-wallet .fletch-wallet-trigger { display: inline-flex; align-items: center; justify-content: center; gap: 16px; width: auto; min-height: 44px; padding: 10px 18px; border: 1px solid color-mix(in srgb, var(--text, #17241d) 20%, transparent); border-radius: var(--radius-control, 10px); background: var(--surface, white); color: var(--text, #17241d); font: 600 14px/1.4 var(--font-ui, sans-serif); white-space: nowrap; cursor: pointer; }
+.fletch-wallet-picker { position: fixed; inset: auto; margin: 0; padding: 12px; box-sizing: border-box; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; border: 1px solid color-mix(in srgb, var(--text, #17241d) 16%, transparent); border-radius: 16px; box-shadow: 0 12px 40px #0003; background: var(--surface, white); color: var(--text, #17241d); font: 14px/1.5 var(--font-ui, sans-serif); }
+.fletch-wallet-picker:popover-open { animation: wallet-appear .15s ease-out; }
+.fletch-wallet-picker-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fletch-wallet-picker-head strong { font: 600 15px/1.4 var(--font-ui, sans-serif); }
+.fletch-wallet-picker-head button { display: grid; place-items: center; flex: 0 0 44px; width: 44px; min-height: 44px; margin: 0; padding: 0; border: 0; border-radius: 8px; background: transparent; color: inherit; font: 22px/1 sans-serif; cursor: pointer; }
+.fletch-wallet-picker .fletch-wallet-picker-caption { margin: 4px 4px 12px; font: 12px/1.5 var(--font-ui, sans-serif); color: var(--muted, #59645e); overflow-wrap: anywhere; }
+.fletch-wallet-options { display: grid; gap: 4px; margin: 0 0 12px; }
+.fletch-wallet-options button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; margin: 0; padding: 8px 10px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: inherit; font: 500 14px/1.4 var(--font-ui, sans-serif); text-align: left; cursor: pointer; }
+.fletch-wallet-options button:hover, .fletch-wallet-picker-head button:hover { background: color-mix(in srgb, var(--text, #17241d) 6%, var(--surface, white)); }
+.fletch-wallet-letter { display: grid; place-items: center; flex: 0 0 30px; width: 30px; height: 30px; border: 1px solid color-mix(in srgb, var(--text, #17241d) 12%, transparent); border-radius: 8px; font-size: 12px; }
+.fletch-wallet-option-arrow { margin-left: auto; }
+.fletch-wallet-picker button:disabled { opacity: .5; cursor: wait; }
+.fletch-wallet-picker button:focus-visible, .fletch-wallet-trigger:focus-visible { outline: 2px solid var(--accent, #286044); outline-offset: 2px; }
+@keyframes wallet-appear { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .fletch-wallet-picker:popover-open { animation: none; } }

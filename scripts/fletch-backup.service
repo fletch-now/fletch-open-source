@@ -1,0 +1,15 @@
+# One-shot: dump the database. Triggered by fletch-backup.timer.
+#
+# Install:
+#   install -m 0755 scripts/fletch-backup.sh /usr/local/bin/fletch-backup
+#   cp scripts/fletch-backup.service scripts/fletch-backup.timer /etc/systemd/system/
+#   systemctl daemon-reload
+#   systemctl enable --now fletch-backup.timer
+
+[Unit]
+Description=Fletch nightly Postgres backup
+After=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/fletch-backup

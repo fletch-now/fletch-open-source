@@ -1,0 +1,13 @@
+.registry-activity-enter { animation: registry-activity-enter 650ms ease-out both; }
+.registry-activity-fresh { box-shadow: inset 3px 0 0 var(--color-hood, #00c805); }
+.registry-activity-dot { animation: registry-activity-beat 2.5s ease-in-out infinite; }
+@keyframes registry-activity-enter {
+  from { opacity: .35; transform: translateY(-5px); background-color: #00c80515; }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes registry-activity-beat {
+  50% { opacity: .45; box-shadow: 0 0 0 4px #00c80518; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .registry-activity-enter, .registry-activity-dot { animation: none; }
+}

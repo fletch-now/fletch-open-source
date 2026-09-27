@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+node scripts/check-public-release.mjs
+command -v gitleaks >/dev/null 2>&1 || { echo 'Install Gitleaks before publishing.' >&2; exit 1; }
+gitleaks git --redact --no-banner --log-opts='--all' .

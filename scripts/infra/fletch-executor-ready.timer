@@ -1,0 +1,10 @@
+[Unit]
+Description=Recover executor startup dependencies without restarting active work
+
+[Timer]
+OnBootSec=45s
+OnUnitInactiveSec=30s
+Unit=fletch-executor-ready.service
+
+[Install]
+WantedBy=timers.target
